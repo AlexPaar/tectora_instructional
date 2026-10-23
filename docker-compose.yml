@@ -1,0 +1,230 @@
+name: tectora_instructional
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: postgres
+    restart: unless-stopped
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    healthcheck:
+      test: pg_isready -U postgres
+      start_period: 30s
+      timeout: 5s
+      retries: 10
+      interval: 5s
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
+    networks:
+      - tectora_instructional
+  redis:
+    image: redis:8-alpine
+    container_name: redis
+    restart: unless-stopped
+    command: [ "sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\"" ]
+    expose:
+      - "6379"
+    ports:
+      - "6379:6379"
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping" ]
+      start_period: 30s
+      timeout: 5s
+      retries: 10
+      interval: 5s
+    volumes:
+      - redis_data:/data
+    networks:
+      - tectora_instructional
+  atlas:
+    image: "mongodb/mongodb-atlas-local:8"
+    container_name: atlas
+    restart: unless-stopped
+    expose:
+      - "27017"
+    ports:
+      - "27020:27017"
+    healthcheck:
+      test: [ "CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok || process.exit(1)" ]
+      start_period: 30s
+      timeout: 5s
+      retries: 10
+      interval: 5s
+    volumes:
+      - atlas_data:/data/db
+      - atlas_search_index:/data/mongot
+    networks:
+      - tectora_instructional
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7
+    container_name: keycloak
+    restart: unless-stopped
+    command: start-dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8080"
+    ports:
+      - "8080:8080"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak?sslmode=disable
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080; echo -e 'GET /realms/master HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q 'HTTP/1.1 200' <&3" ]
+      start_period: 150s
+      timeout: 5s
+      retries: 10
+      interval: 5s
+    networks:
+      - tectora_instructional
+  keycloak-init:
+    image: quay.io/keycloak/keycloak:26.7
+    container_name: keycloak-init
+    restart: "no"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+      KEYCLOAK_PERM_ADMIN_USERNAME: ${KEYCLOAK_PERM_ADMIN_USERNAME}
+      KEYCLOAK_PERM_ADMIN_PASSWORD: ${KEYCLOAK_PERM_ADMIN_PASSWORD}
+      USER_PASSWORD_ALICE: ${USER_PASSWORD_ALICE}
+    volumes:
+      - ./init-keycloak.sh:/opt/keycloak/init-keycloak.sh:ro
+    entrypoint: [ "/bin/sh", "/opt/keycloak/init-keycloak.sh" ]
+    networks:
+      - tectora_instructional
+  litellm:
+    image: ghcr.io/berriai/litellm-database:main-stable
+    container_name: litellm
+    restart: unless-stopped
+    command: [ "--config", "/app/config.yaml" ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "4000"
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/litellm?sslmode=disable
+      STORE_MODEL_IN_DB: "True"
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/readiness')" ]
+      start_period: 150s
+      timeout: 5s
+      retries: 5
+      interval: 5s
+    volumes:
+      - ./litellm.config.yaml:/app/config.yaml:ro
+    networks:
+      - tectora_instructional
+  litellm-init:
+    image: curlimages/curl:latest
+    container_name: litellm-init
+    restart: "no"
+    depends_on:
+      litellm:
+        condition: service_healthy
+    environment:
+      LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY}"
+      SK_DEVELOPMENT: "${SK_DEVELOPMENT}"
+      SK_MADWEST_COMMUNITY_COLLEGE: "${SK_MADWEST_COMMUNITY_COLLEGE}"
+    volumes:
+      - ./init-litellm.sh:/seed.sh:ro
+    entrypoint: [ "/bin/sh", "/seed.sh" ]
+    networks:
+      - tectora_instructional
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    depends_on:
+      litellm:
+        condition: service_healthy
+    expose:
+      - "8080"
+    ports:
+      - "3000:8080"
+    environment:
+      OPENAI_API_BASE_URL: http://litellm:4000/v1
+      OPENAI_API_KEY: ${SK_LITELLM}
+      WEBUI_ADMIN_EMAIL: admin@example.org
+      WEBUI_ADMIN_PASSWORD: ${WEBUI_ADMIN_PASSWORD}
+      WEBUI_ADMIN_NAME: Admin
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
+      DEFAULT_LOCALE: en-US
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      start_period: 150s
+      timeout: 5s
+      retries: 5
+      interval: 10s
+    volumes:
+      - open_webui_data:/app/backend/data
+    networks:
+      - tectora_instructional
+  langgraph:
+    image: ${LANGGRAPH_IMAGE_NAME:-tectora:latest}
+    container_name: langgraph
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      atlas:
+        condition: service_healthy
+      keycloak-init:
+        condition: service_completed_successfully
+      litellm-init:
+        condition: service_completed_successfully
+    expose:
+      - "8000"
+    ports:
+      - "8123:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/langgraph?sslmode=disable
+      REDIS_URI: redis://:${REDIS_PASSWORD}@redis:6379
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ok')" ]
+      start_period: 150s
+      timeout: 5s
+      retries: 5
+      interval: 10s
+    networks:
+      - tectora_instructional
+
+volumes:
+  postgres_data:
+    name: tectora_instructional_postgres_data
+  redis_data:
+    name: tectora_instructional_redis_data
+  atlas_data:
+    name: tectora_instructional_atlas_data
+  atlas_search_index:
+    name: tectora_instructional_atlas_search_index
+  open_webui_data:
+    name: tectora_instructional_open_webui_data
+
+networks:
+  tectora_instructional:
+    name: tectora_instructional

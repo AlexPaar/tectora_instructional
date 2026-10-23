@@ -1,0 +1,106 @@
+{
+  "theme": "tribe",
+  "active": "tectora 🏛️",
+  "activateOnStartup": true,
+  "keepExistingTerminals": false,
+  "sessions": {
+    "tectora 🏛️": [
+      {
+        "name": "Build",
+        "icon": "build",
+        "color": "terminal.foreground",
+        "cwd": "C:\\GitHub\\Incubator\\tectora_instructional\\",
+        "commands": [
+          "langgraph build -c graphs/langgraph.json -t tectora:latest"
+        ],
+        "autoExecuteCommands": false
+      },
+      [
+        {
+          "name": "Docker - Delete",
+          "icon": "trash",
+          "color": "terminal.foreground",
+          "cwd": "C:\\GitHub\\Incubator\\tectora_instructional\\",
+          "commands": [
+            "docker compose down --volumes"
+          ],
+          "autoExecuteCommands": false
+        },
+        {
+          "name": "Docker - Start",
+          "icon": "play",
+          "color": "terminal.foreground",
+          "cwd": "C:\\GitHub\\Incubator\\tectora_instructional\\",
+          "commands": [
+            "docker compose up -d"
+          ],
+          "autoExecuteCommands": false
+        }
+      ],
+      [
+        {
+          "name": "Atlas - Setup",
+          "icon": "folder-library",
+          "color": "terminal.foreground",
+          "cwd": "C:\\GitHub\\Incubator\\tectora_instructional\\scripts\\",
+          "commands": [
+            "mongosh \"mongodb://localhost:27020/?directConnection=true\" setup.js"
+          ],
+          "autoExecuteCommands": false
+        },
+        {
+          "name": "Atlas - Load",
+          "icon": "library",
+          "color": "terminal.foreground",
+          "cwd": "C:\\GitHub\\Incubator\\tectora_instructional\\scripts\\",
+          "commands": [
+            "python load_thesis_artifacts.py"
+          ],
+          "autoExecuteCommands": false
+        }
+      ],
+      {
+        "name": "Development",
+        "icon": "developer-tools",
+        "color": "terminal.foreground",
+        "cwd": "C:\\GitHub\\Incubator\\tectora_instructional\\dev",
+        "commands": [
+          "python logout.py"
+        ],
+        "autoExecuteCommands": false
+      },
+      [
+        {
+          "name": "LangGraph",
+          "icon": "source-control",
+          "color": "terminal.foreground",
+          "cwd": "C:\\GitHub\\Incubator\\tectora_instructional\\graphs",
+          "commands": [
+            "langgraph dev --config langgraph.json --allow-blocking --no-browser --debug-port 5678"
+          ],
+          "autoExecuteCommands": false
+        },
+        {
+          "name": "Agent Chat UI",
+          "icon": "comment",
+          "color": "terminal.foreground",
+          "cwd": "C:\\GitHub\\Others\\agent-chat-ui",
+          "commands": [
+            "pnpm dev"
+          ],
+          "autoExecuteCommands": false
+        }
+      ],
+      {
+        "name": "Tectora 🏛️",
+        "icon": "comment",
+        "color": "terminal.foreground",
+        "cwd": "C:\\GitHub\\Incubator\\tectora_instructional\\",
+        "commands": [
+          "python agent.py"
+        ],
+        "autoExecuteCommands": false
+      }
+    ]
+  }
+}

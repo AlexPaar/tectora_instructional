@@ -1,0 +1,13 @@
+{
+  "dependencies": [
+    ".."
+  ],
+  "graphs": {
+    "agent": "../agent.py:agent"
+  },
+  "env": "../.env",
+  "image_distro": "wolfi",
+  "dockerfile_lines": [
+    "ENV PYTHONPATH=/deps/tectora_instructional"
+  ]
+}
