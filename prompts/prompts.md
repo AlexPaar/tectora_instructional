@@ -63,3 +63,9 @@ Tool [weather.py](../tools/weather.py)
 - Welche Dozenten haben Thesen über Gamification betreut? ➡️ Ich brauche deren Telefonnummern an der DHSN. 📌 (✅)
   - Which lecturers have supervised theses on gamification? ➡️ I need their phone numbers at the DHSN.
   - Quels enseignants ont encadré des thèses sur la gamification? ➡️ J'ai besoin de leurs numéros de téléphone à la DHSN.
+
+### Retrieve Theses
+
+- Was sind die wesentlichen Erkenntnisse von Thesen über Gamification? ✅
+  - What are the key findings of theses about gamification?
+  - Quels sont les enseignements essentiels des thèses sur la gamification?

@@ -21,6 +21,7 @@ from rich.panel import Panel
 
 from tools.dhsn import search_contact
 from tools.load_thesis_artifacts import load_thesis_artifacts
+from tools.retrieve_theses import retrieve_theses
 from tools.weather import get_current_weather
 from utils.keycloak_auth import get_access_token
 
@@ -187,7 +188,7 @@ def _build_agent(
     agent_backend: FilesystemBackend | None = None,
 ):
     """Create the deep agent, optionally with a caller-provided checkpointer."""
-    base_tools = [get_current_weather, search_contact, load_thesis_artifacts]
+    base_tools = [get_current_weather, search_contact, load_thesis_artifacts, retrieve_theses]
 
     tools = [*base_tools, *(mcp_tools or [])]
 
