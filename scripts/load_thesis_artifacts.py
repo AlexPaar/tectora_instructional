@@ -117,7 +117,7 @@ class Academic(BaseModel):
         description="Academic ID, auto-generated if not provided.",
     )
     name: Annotated[str, Field(description="The full name of the individual (e.g., 'John Doe' or 'Prof. Dr. Smith').")]
-    roles: list[Literal["student", "supervisor", "advisor"]] = Field(
+    roles: list[Literal["author", "supervisor", "advisor"]] = Field(
         default_factory=list,
         description="The role(s) of this person in the context of the thesis/supervision. Empty if unknown.",
     )
@@ -312,7 +312,7 @@ def _extract_academics(document: DoclingDocument) -> Academics:
     prompt = f"""
     You are a data extraction assistant. Carefully analyze the following text snippet from a university 
     thesis supervision file. Extract the names, roles, affiliations, emails, and phone numbers of all 
-    relevant academics (students, primary supervisors, secondary reviewers, or company contacts).
+    relevant academics (authors, primary supervisors, secondary reviewers, or company contacts).
     
     Do not invent or assume information. If a specific field (like a phone number) is missing for a person, 
     leave it as null.
@@ -453,7 +453,7 @@ def _complete_filepath_normalization(input_path: str) -> str:
     return fully_normalized_str
 
 
-def _load_docling_documents(dir: str) -> tuple[int, list[Academic]]:
+def _load_docling_documents(dir: str) -> tuple[int, list[Academic], dict[str, list[str]]]:
     """Load every Docling JSON file in dir, chunk its text, embed the chunks, and upsert into MongoDB.
 
     Returns the number of files loaded and the academics extracted from each file.
@@ -461,6 +461,7 @@ def _load_docling_documents(dir: str) -> tuple[int, list[Academic]]:
     docling_extension = DOCLING_EXTENSIONS["JSON"]
     loaded_count = 0
     academics: list[Academic] = []
+    document_academic_ids: dict[str, list[str]] = {}
 
     for root, _, files in os.walk(dir):
         for filename in files:
@@ -485,6 +486,7 @@ def _load_docling_documents(dir: str) -> tuple[int, list[Academic]]:
 
             academics_in_document = _extract_academics(docling_document)
             academics += academics_in_document.academics
+            document_academic_ids[filepath] = [academic.id for academic in academics_in_document.academics]
 
             # Store the (potentially large) docling JSON in GridFS to stay under the 16 MB BSON document limit
             for stale_file in docling_files.find({"filename": filepath}):
@@ -540,7 +542,7 @@ def _load_docling_documents(dir: str) -> tuple[int, list[Academic]]:
 
             loaded_count += 1
 
-    return loaded_count, academics
+    return loaded_count, academics, document_academic_ids
 
 
 def _merge_academics(base: Academic, incoming: Academic) -> Academic:
@@ -599,7 +601,7 @@ def _normalize_string(val: str | None) -> str | None:
     return val.strip().lower() if val else None
 
 
-def _store_academics(academics: list[Academic]) -> list[Academic]:
+def _store_academics(academics: list[Academic]) -> tuple[list[Academic], dict[str, str]]:
     """Merge incoming academics with academics already stored in MongoDB (to avoid duplicates),
     upsert only the new/changed records, and return just the incoming academcis in their
     consolidated forms."""
@@ -618,6 +620,7 @@ def _store_academics(academics: list[Academic]) -> list[Academic]:
     stored: dict[str, Academic] = {a.id: a for a in existing_academics}
     touched_ids: list[str] = []
     touched_set: set[str] = set()
+    academic_id_map: dict[str, str] = {}
 
     for incoming in academics:
         if not incoming.name:
@@ -645,6 +648,8 @@ def _store_academics(academics: list[Academic]) -> list[Academic]:
             matched_id = incoming.id
             stored[matched_id] = incoming
 
+        academic_id_map[incoming.id] = matched_id
+
         if matched_id not in touched_set:
             touched_ids.append(matched_id)
             touched_set.add(matched_id)
@@ -665,18 +670,20 @@ def _store_academics(academics: list[Academic]) -> list[Academic]:
             upsert=True,
         )
 
-    return [stored[academic_id] for academic_id in touched_ids]
+    return [stored[academic_id] for academic_id in touched_ids], academic_id_map
 
 
-def _consolidate_academics(academics: list[Academic]) -> list[Academic]:
-    """Deduplicate and consolidate academics in MongoDB, returning the number of unique academics stored."""
+def _consolidate_academics(academics: list[Academic]) -> tuple[list[Academic], dict[str, str]]:
+    """Deduplicate academics and map each incoming ID to its consolidated ID."""
     unique_academics: dict[str, Academic] = {}
+    academic_id_map: dict[str, str] = {}
 
     for incoming in academics:
         if not incoming.name:
             continue
 
         matched = False
+        matched_id = incoming.id
         inc_email = _normalize_string(incoming.email)
         inc_phone = _normalize_string(incoming.phone_number)
 
@@ -690,13 +697,33 @@ def _consolidate_academics(academics: list[Academic]) -> list[Academic]:
                 or (_advanced_name_match(base.name, incoming.name))
             ):
                 unique_academics[base_id] = _merge_academics(base, incoming)
+                matched_id = base_id
                 matched = True
                 break
 
         if not matched:
             unique_academics[incoming.id] = incoming
+        academic_id_map[incoming.id] = matched_id
 
-    return list(unique_academics.values())
+    return list(unique_academics.values()), academic_id_map
+
+
+def _persist_document_academic_ids(
+    document_academic_ids: dict[str, list[str]],
+    consolidated_academic_ids: dict[str, str],
+    stored_academic_ids: dict[str, str],
+) -> None:
+    """Write canonical academic IDs back to the documents they were extracted from."""
+    for filepath, extracted_ids in document_academic_ids.items():
+        canonical_ids = list(
+            dict.fromkeys(
+                stored_academic_ids[consolidated_academic_ids[academic_id]]
+                for academic_id in extracted_ids
+                if academic_id in consolidated_academic_ids
+                and consolidated_academic_ids[academic_id] in stored_academic_ids
+            )
+        )
+        documents_collection.update_one({"filepath": filepath}, {"$set": {"academic_ids": canonical_ids}})
 
 
 def load_thesis_artifacts(input_folder: str, output_folder: str, litellm_virtual_key: str) -> dict:
@@ -717,11 +744,13 @@ def load_thesis_artifacts(input_folder: str, output_folder: str, litellm_virtual
 
     created_count = _create_doclings(output_folder)
 
-    loaded_count, academics = _load_docling_documents(output_folder)
+    loaded_count, academics, document_academic_ids = _load_docling_documents(output_folder)
 
-    academics = _consolidate_academics(academics)
+    academics, consolidated_academic_ids = _consolidate_academics(academics)
 
-    academics = _store_academics(academics)
+    academics, stored_academic_ids = _store_academics(academics)
+
+    _persist_document_academic_ids(document_academic_ids, consolidated_academic_ids, stored_academic_ids)
 
     return {
         "files_touched": touched_count,
@@ -763,18 +792,20 @@ def main() -> None:
 
     console.print("[dim]Loading Docling JSON files into MongoDB...[/dim]", highlight=False)
 
-    loaded_count, academics = _load_docling_documents(OUTPUT_DIR)
+    loaded_count, academics, document_academic_ids = _load_docling_documents(OUTPUT_DIR)
 
     console.print(
         f"[bold green]✓ Done. {loaded_count} file{'' if loaded_count == 1 else 's'} loaded into MongoDB with chunks and embeddings.[/bold green]"
     )
 
-    academics = _consolidate_academics(academics)
+    academics, consolidated_academic_ids = _consolidate_academics(academics)
 
     # for academic in academics:
     #     console.print(f"[dim]ACADEMIC[/dim]: {academic.model_dump()}")
 
-    academics = _store_academics(academics)
+    academics, stored_academic_ids = _store_academics(academics)
+
+    _persist_document_academic_ids(document_academic_ids, consolidated_academic_ids, stored_academic_ids)
 
     console.print(
         f"[bold green]✓ Done. {len(academics)} unique academic{'' if len(academics) == 1 else 's'} stored in MongoDB.[/bold green]"
