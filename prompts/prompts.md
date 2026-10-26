@@ -4,6 +4,8 @@
 
 ### Poem Generator
 
+Skill [SKILL.md](../skills/agent/poem-generator/SKILL.md)
+
 - Write a poem about gamification. ✅
   - Schreibe ein Gedicht über Gamifizierung.
   - Écris un poème sur la ludification.
@@ -19,6 +21,8 @@ MCP Server [pizza_ops_server.py](../mcp/pizza-ops/pizza_ops_server.py)
   - Quelle quantité de pizza dois-je commander?
 
 ### GitHub
+
+[GitHub's official MCP Server](https://github.com/github/github-mcp-server)
 
 - Wie ist der GitHub Account von Linus Torvalds? ✅
   - What is Linus Torvalds' GitHub account?
@@ -40,6 +44,8 @@ Tool [weather.py](../tools/weather.py)
 
 ### DHSN
 
+Tool [dhsn.py](../tools/dhsn.py)
+
 - Wie sind die Kontaktdaten von Alexander Paar? ✅
   - What are Alexander Paar's contact details?
   - Quelles sont les coordonnées d'Alexander Paar?
@@ -58,11 +64,15 @@ Tool [weather.py](../tools/weather.py)
 
 ### Retrieve Theses
 
+Tool [retrieve_theses.py](../tools/retrieve_theses.py)
+
 - Was sind die wesentlichen Erkenntnisse von Thesen über Gamification? ✅
   - What are the key findings of theses about gamification?
   - Quels sont les enseignements essentiels des thèses sur la gamification?
 
 ### Retrieve Academics
+
+Tool [retrieve_academics.py](../tools/retrieve_academics.py)
 
 - Wer hat Thesen über Gamification geschrieben? 📌 _Only theses listed_
   - Who has written theses on gamification?
