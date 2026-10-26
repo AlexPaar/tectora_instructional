@@ -1,4 +1,4 @@
-# Tectora 🏛️ - The Agentic Fabric for Research Data
+# Tectora 🏛️ - An Agentic Fabric for Research Data
 
 ```text
   _____         _
@@ -6,9 +6,35 @@
    | |/ -_)/ _|  _/ _ \| '_/ _` | 🏛️
    |_|\___|\__|\__\___/|_| \__,_|
 
-   The Agentic Fabric for Research Data
+   An Agentic Fabric for Research Data
    [tectora.org] • [v0.1.0-alpha]
 ```
+
+## Technologies
+
+- [VS Code](https://code.visualstudio.com/)
+- [GitHub Desktop](https://desktop.github.com/)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Python](https://www.python.org/)
+- [LangChain](https://docs.langchain.com/oss/python/langchain/overview)
+- [LangGraph](https://docs.langchain.com/oss/python/langgraph/overview)
+- [LangSmith](https://smith.langchain.com/)
+- [MCP](https://modelcontextprotocol.io/)
+- [FastMCP](https://gofastmcp.com/)
+- [Docling](https://docling.ai/)
+- [NodeJS](https://nodejs.org/en)
+- [Postgres](https://www.postgresql.org/)
+- [Redis](https://redis.io/)
+- [MongoDB](https://www.mongodb.com/)
+- [Keycloak](https://www.keycloak.org/)
+- [LiteLLM](https://www.litellm.ai/)
+- [Open WebUI](https://openwebui.com/)
+- [Agent Chat UI](https://github.com/langchain-ai/agent-chat-ui)
+- [GitHub](https://github.com/)
+- [Open AI](https://openai.com/)
+- [Anthropic](https://www.anthropic.com/)
+- [Hugging Face](https://huggingface.co/)
+- [OpenWeather](https://openweathermap.org/)
 
 ## API Keys
 
