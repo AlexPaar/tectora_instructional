@@ -20,7 +20,7 @@ services:
       interval: 5s
     volumes:
       - postgres_data:/var/lib/postgresql
-      - ./init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
     networks:
       - tectora_instructional
   redis:
