@@ -1,23 +1,34 @@
 [project]
-name = "tectora_instructional"
+name = "tectora"
 version = "0.1.0a0"
-description = "The Agentic Fabric for Research Data"
+description = "An Agentic Fabric for Research Data"
 requires-python = ">=3.11"
 dependencies = [
+    "beautifulsoup4",
     "deepagents",
     "docling",
+    "docling-core",
     "fastmcp",
+    "langchain-core",
     "langchain-mcp-adapters",
+    "langchain-mongodb",
     "langchain-openai",
     "langgraph",
+    "objprint",
     "prompt-toolkit",
     "pydantic",
+    "pymongo",
     "python-dotenv",
+    "rapidfuzz",
     "requests",
+    "requests-oauthlib",
     "rich",
+    "tiktoken",
     "typer",
-    "objprint",
 ]
+
+[project.optional-dependencies]
+dev = ["langgraph-cli[inmem]", "debugpy"]
 
 [build-system]
 requires = ["setuptools>=68"]
