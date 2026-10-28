@@ -67,6 +67,35 @@ With [rich](https://pypi.org/project/rich/), use the following styles:
 - [LiteLLM](./docs/litellm.md)
 - [Open WebUI](./docs/open-webui.md)
 
+## System requirements
+
+### Brew (macOS)
+
+Install Homebrew using its official installer.
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+### Python Environment
+
+Install the project including development dependencies.
+
+```bash
+pip install -e ".[dev]"
+```
+
+### MongoDB Shell
+
+On Windows, install the [Windows x64 MSI](https://www.mongodb.com/try/download/shell).
+
+On macOS, install `mongosh` with Homebrew.
+
+```bash
+brew install mongosh
+mongosh --version
+```
+
 ## Running the Agent
 
 ### CLI Agent
